@@ -200,8 +200,8 @@ double parse_double(Status *st, DataStream *s)
     int digits = 0;
     int significant_digits = 0;
     // Note: fractional_digits and decimal_exponent should probably be combined into one signed decimal_exponent. See :ExponentAkwardness
-    int fractional_digits = -1; // negative means no decimal point seen, yet
-    int decimal_exponent = 0; // counts only towards positive decimal exponents
+    int64_t fractional_digits = -1; // negative means no decimal point seen, yet
+    uint64_t decimal_exponent = 0; // counts only towards positive decimal exponents
 
     switch (ch) {
         case '-': negative = true; break;
@@ -332,17 +332,17 @@ end_of_exponent:
                     if (fractional_digits < 0)
                         fractional_digits = 0;
                     fractional_digits += absolute_exponent;
-                    if (fractional_digits < absolute_exponent)
+                    if (fractional_digits < 0 || (uint64_t)fractional_digits < absolute_exponent)
                         goto return_possibly_signed_zero; // underflow
                 }
                 else {
                     if (fractional_digits > 0) {
-                        if (fractional_digits >= absolute_exponent) {
-                            fractional_digits -= absolute_exponent;
+                        if ((uint64_t)fractional_digits >= absolute_exponent) {
+                            fractional_digits -= (int64_t)absolute_exponent;
                             absolute_exponent = 0;
                         }
                         else {
-                            absolute_exponent -= fractional_digits;
+                            absolute_exponent -= (uint64_t)fractional_digits;
                             fractional_digits = 0;
                         }
                     }
@@ -413,7 +413,6 @@ parse_nan:
 
 end_of_number:
     // Note: 'digits' is not too meaningful from here on except for the (digits != 0) condition. (See also :MantissaLimit above.)
-    assert(decimal_exponent >= 0);
     assert((fractional_digits <= 0) || (decimal_exponent == 0));
 
     // XXX @Speed maybe put this check only in the less frequent code paths where it is needed?
