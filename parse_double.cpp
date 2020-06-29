@@ -297,7 +297,7 @@ parse_exponent:
                         digit_value = ch - '0';
                         if (digit_value <= 9) {
                             if (absolute_exponent > (uint64_t)1844674407370955161 - (digit_value >= 6)) {
-                                if (negative_exponent)
+                                if (negative_exponent || significant_digits == 0)
                                     goto return_possibly_signed_zero;
                                 else
                                     goto return_possibly_signed_infinity;
