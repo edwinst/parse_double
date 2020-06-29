@@ -321,11 +321,11 @@ end_of_exponent:
                 //       Maybe they should be combined again into a signed decimal_exponent.
                 //       :ExponentAkwardness
                 if (negative_exponent && absolute_exponent) {
-                    if (decimal_exponent > 0) {
-                        if (decimal_exponent >= absolute_exponent) {
-                            decimal_exponent -= absolute_exponent;
-                            absolute_exponent = 0;
-                        }
+                    if (decimal_exponent >= absolute_exponent) {
+                        decimal_exponent -= absolute_exponent;
+                        absolute_exponent = 0;
+                    }
+                    else {
                         absolute_exponent -= decimal_exponent;
                         decimal_exponent = 0;
                     }
@@ -341,8 +341,10 @@ end_of_exponent:
                             fractional_digits -= absolute_exponent;
                             absolute_exponent = 0;
                         }
-                        absolute_exponent -= fractional_digits;
-                        fractional_digits = 0;
+                        else {
+                            absolute_exponent -= fractional_digits;
+                            fractional_digits = 0;
+                        }
                     }
                     decimal_exponent += absolute_exponent;
                     if (decimal_exponent < absolute_exponent)
