@@ -14,6 +14,8 @@ Some properties of the code:
 * The code has no dependencies except for the availability of a
   (64-bit)*(64-bit)->(128-bit) unsigned integer multiplication
   (in particular no floating-point functions are required).
+  Note: Actually only the high 64 bits of the result are used. Therefore a
+  64x64->64 "mulhi" operation as it is available on some cores can also be used.
 
 * Faster than Visual C++ 2019 "atof" by a factor of 2.6-5x according to my crude measurements
   (also the standard deviation of the cycle times is much less than for Visual C++ atof).
