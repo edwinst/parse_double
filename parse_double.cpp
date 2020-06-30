@@ -202,9 +202,8 @@ double parse_double(Status *st, DataStream *s)
     uint64_t mantissa = 0;
     int digits = 0;
     int significant_digits = 0;
-    // Note: fractional_digits and decimal_exponent should probably be combined into one signed decimal_exponent. See :ExponentAwkwardness
-    int64_t fractional_digits = -1; // negative means no decimal point seen, yet
-    uint64_t decimal_exponent = 0; // counts only towards positive decimal exponents
+    int64_t decimal_exponent = 0;
+    bool have_seen_decimal_point = false;
 
     switch (ch) {
         case '-': negative = true; break;
@@ -216,7 +215,7 @@ double parse_double(Status *st, DataStream *s)
             digits++;
             significant_digits++;
             break;
-        case '.': fractional_digits = 0; break;
+        case '.': have_seen_decimal_point = true; break;
         case 'i':
                   s->ptr--; // put back character
                   goto parse_infinity;
@@ -232,7 +231,7 @@ double parse_double(Status *st, DataStream *s)
                   }
     }
 
-    // XXX @Speed maybe split the following loop in a part for fractional_digits < 0 and one for fractional_digits >= 0 (after the decimal point)?
+    // XXX @Speed maybe split the following loop in a part for !have_seen_decimal_point and one for have_seen_decimal_point?
     do {
         while (s->ptr != s->end) {
             ch = *s->ptr;
@@ -243,11 +242,11 @@ double parse_double(Status *st, DataStream *s)
                     // :MantissaLimit
                     // NOTE: In this case, we cannot represent the 20th significant digit
                     // in the mantissa since we would overflow the uint64_t range.
-                    // If we have not yet seen a decimal point (fractional_digits < 0),
+                    // If we have not yet seen a decimal point
                     // we simply let the mantissa be 19 digits and increase the decimal_exponent
-                    // instead. If we have already seen a decimal point (fractional_digits >= 0),
+                    // instead. If we have already seen a decimal point
                     // we also let the mantissa remain at 19 decimal digits and compensate
-                    // for that by *not* incrementing fractional_digits.
+                    // for that by *not* decrementing the decimal_exponent.
                     // Note also that from this point on, the 'digits' value is mostly meaningless.
                     // Setting significant_digits to '20' is a lie in this case
                     // used to trigger the terminating condition below. The
@@ -258,20 +257,20 @@ double parse_double(Status *st, DataStream *s)
                     // up to and including 18446744073709551615.
                     assert(significant_digits == 19);
                     significant_digits = 20;
-                    if (fractional_digits < 0)
+                    if (!have_seen_decimal_point)
                         decimal_exponent++;
                 }
                 else {
                     mantissa = 10 * mantissa + digit_value;
                     if (digit_value || significant_digits)
                         significant_digits++;
-                    if (fractional_digits >= 0) fractional_digits++;
+                    if (have_seen_decimal_point) decimal_exponent--;
                 }
             }
             else if (ch == '.') {
-                if (fractional_digits >= 0)
+                if (have_seen_decimal_point)
                     goto end_of_number;
-                fractional_digits = 0;
+                have_seen_decimal_point = true;
             }
             else if ((ch == 'e' || ch == 'E') && digits) {
 parse_exponent:
@@ -316,41 +315,16 @@ parse_exponent:
                         goto failed;
                 } while (s->ptr != s->end);
 end_of_exponent:
-                // Note: OK, this is awkward. The reason for this mess is that I wrote this
-                //       parser for PDF parsing where no explicit exponents occur.
-                //       Now that I want to also handle the explicit exponents, the
-                //       split handling of fractional_digits and decimal_exponent
-                //       bites me. :(
-                //       Maybe they should be combined again into a signed decimal_exponent.
-                //       :ExponentAwkwardness
                 if (negative_exponent && absolute_exponent) {
-                    if (decimal_exponent >= absolute_exponent) {
-                        decimal_exponent -= absolute_exponent;
-                        absolute_exponent = 0;
-                    }
-                    else {
-                        absolute_exponent -= decimal_exponent;
-                        decimal_exponent = 0;
-                    }
-                    if (fractional_digits < 0)
-                        fractional_digits = 0;
-                    fractional_digits += absolute_exponent;
-                    if (fractional_digits < 0 || (uint64_t)fractional_digits < absolute_exponent)
+                    int64_t before = decimal_exponent;
+                    decimal_exponent -= absolute_exponent;
+                    if (decimal_exponent >= before)
                         goto return_possibly_signed_zero; // underflow
                 }
                 else {
-                    if (fractional_digits > 0) {
-                        if ((uint64_t)fractional_digits >= absolute_exponent) {
-                            fractional_digits -= (int64_t)absolute_exponent;
-                            absolute_exponent = 0;
-                        }
-                        else {
-                            absolute_exponent -= (uint64_t)fractional_digits;
-                            fractional_digits = 0;
-                        }
-                    }
+                    int64_t before = decimal_exponent;
                     decimal_exponent += absolute_exponent;
-                    if (decimal_exponent < absolute_exponent)
+                    if (decimal_exponent < before)
                         goto return_possibly_signed_infinity; // overflow
                 }
                 goto end_of_number;
@@ -392,13 +366,13 @@ parse_nan:
                 do {
                     while (s->ptr != s->end) {
                         ch = *s->ptr;
-                        if (ch == '.' && fractional_digits < 0)
-                            fractional_digits = 0;
+                        if (ch == '.' && !have_seen_decimal_point)
+                            have_seen_decimal_point = true;
                         else if (ch == 'e' || ch == 'E')
                             goto parse_exponent;
                         else if (ch < '0' || ch > '9')
                             goto end_of_number;
-                        if (fractional_digits < 0)
+                        if (!have_seen_decimal_point)
                             decimal_exponent++;
                         s->ptr++;
                     }
@@ -416,7 +390,6 @@ parse_nan:
 
 end_of_number:
     // Note: 'digits' is not too meaningful from here on except for the (digits != 0) condition. (See also :MantissaLimit above.)
-    assert((fractional_digits <= 0) || (decimal_exponent == 0));
 
     // XXX @Speed maybe put this check only in the less frequent code paths where it is needed?
     if (digits == 0) {
@@ -466,18 +439,19 @@ return_possibly_signed_zero:
     // printf("normalized: 0x%016" PRIx64 ", binexp: %d\n", mantissa, binexp); // XXX DEBUG
 
     // shift the decimal point to the correct position by multiplying with powers of ten
-    if (fractional_digits > 0) {
-        if (fractional_digits >= 512)
+    if (decimal_exponent < 0) {
+        decimal_exponent = -decimal_exponent;
+        if (decimal_exponent < 0 || decimal_exponent >= 512)
             goto return_possibly_signed_zero; // underflow
-        if (fractional_digits & 256) mulf64(&mantissa, &binexp, mant1en256, exp1en256);
-        if (fractional_digits & 128) mulf64(&mantissa, &binexp, mant1en128, exp1en128);
-        if (fractional_digits &  64) mulf64(&mantissa, &binexp, mant1en64 , exp1en64 );
-        if (fractional_digits &  32) mulf64(&mantissa, &binexp, mant1en32 , exp1en32 );
-        if (fractional_digits &  16) mulf64(&mantissa, &binexp, mant1en16 , exp1en16 );
-        if (fractional_digits &   8) mulf64(&mantissa, &binexp, mant1en8  , exp1en8  );
-        if (fractional_digits &   4) mulf64(&mantissa, &binexp, mant1en4  , exp1en4  );
-        if (fractional_digits &   2) mulf64(&mantissa, &binexp, mant1en2  , exp1en2  );
-        if (fractional_digits &   1) mulf64(&mantissa, &binexp, mant1en1  , exp1en1  );
+        if (decimal_exponent & 256) mulf64(&mantissa, &binexp, mant1en256, exp1en256);
+        if (decimal_exponent & 128) mulf64(&mantissa, &binexp, mant1en128, exp1en128);
+        if (decimal_exponent &  64) mulf64(&mantissa, &binexp, mant1en64 , exp1en64 );
+        if (decimal_exponent &  32) mulf64(&mantissa, &binexp, mant1en32 , exp1en32 );
+        if (decimal_exponent &  16) mulf64(&mantissa, &binexp, mant1en16 , exp1en16 );
+        if (decimal_exponent &   8) mulf64(&mantissa, &binexp, mant1en8  , exp1en8  );
+        if (decimal_exponent &   4) mulf64(&mantissa, &binexp, mant1en4  , exp1en4  );
+        if (decimal_exponent &   2) mulf64(&mantissa, &binexp, mant1en2  , exp1en2  );
+        if (decimal_exponent &   1) mulf64(&mantissa, &binexp, mant1en1  , exp1en1  );
     }
     else if (decimal_exponent) {
         if (decimal_exponent >= 512)
