@@ -62,7 +62,7 @@
 
 namespace stats {
     namespace histogram {
-        constexpr uint32_t default_n_bins = 32;
+        constexpr uint32_t default_n_bins = 64;
         constexpr uint32_t default_n_samplebuf_elements = 32;
 
         struct HistogramSampleN {
