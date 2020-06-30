@@ -202,7 +202,7 @@ double parse_double(Status *st, DataStream *s)
     uint64_t mantissa = 0;
     int digits = 0;
     int significant_digits = 0;
-    // Note: fractional_digits and decimal_exponent should probably be combined into one signed decimal_exponent. See :ExponentAkwardness
+    // Note: fractional_digits and decimal_exponent should probably be combined into one signed decimal_exponent. See :ExponentAwkwardness
     int64_t fractional_digits = -1; // negative means no decimal point seen, yet
     uint64_t decimal_exponent = 0; // counts only towards positive decimal exponents
 
@@ -316,13 +316,13 @@ parse_exponent:
                         goto failed;
                 } while (s->ptr != s->end);
 end_of_exponent:
-                // Note: OK, this is akward. The reason for this mess is that I wrote this
+                // Note: OK, this is awkward. The reason for this mess is that I wrote this
                 //       parser for PDF parsing where no explicit exponents occur.
                 //       Now that I want to also handle the explicit exponents, the
                 //       split handling of fractional_digits and decimal_exponent
                 //       bites me. :(
                 //       Maybe they should be combined again into a signed decimal_exponent.
-                //       :ExponentAkwardness
+                //       :ExponentAwkwardness
                 if (negative_exponent && absolute_exponent) {
                     if (decimal_exponent >= absolute_exponent) {
                         decimal_exponent -= absolute_exponent;
