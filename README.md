@@ -15,7 +15,7 @@ Some properties of the code:
   (64-bit)*(64-bit)->(128-bit) unsigned integer multiplication
   (in particular no floating-point functions are required).
 
-* Faster than Visual C++ 2019 "atof" by a factor of 3-10x according to my crude measurements
+* Faster than Visual C++ 2019 "atof" by a factor of 2.6-10x according to my crude measurements
   (also the standard deviation of the cycle times is much less than for Visual C++ atof).
 
 * Round-trip-safe in the sense that binary->string->binary (using Visual C++
