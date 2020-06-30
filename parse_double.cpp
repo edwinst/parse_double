@@ -443,6 +443,11 @@ return_possibly_signed_zero:
     unsigned char bsr_result = _BitScanReverse64(&index, mantissa);
     assert(bsr_result);
     int binexp = index;
+    // XXX @Speed Note: We could probably always just do mantissa <<= (64 - index). Strictly speaking
+    //                  this is wrong for index == 0 (i.e. old mantissa == 1) because the shift is a
+    //                  no-op then instead of clearing the mantissa. This error of +1 in mantissa
+    //                  does not seem to affect the final result, though. I have not seen enough of
+    //                  a benefit to do this yet.
     if (index)
         mantissa <<= (64 - index);
     else
