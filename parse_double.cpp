@@ -449,7 +449,8 @@ return_possibly_signed_zero:
 
     // shift the decimal point to the correct position by multiplying with powers of ten
     if (fractional_digits > 0) {
-        // XXX @Incomplete bound fractional_digits --> underflow
+        if (fractional_digits >= 512)
+            goto return_possibly_signed_zero; // underflow
         if (fractional_digits & 256) mulf64(&mantissa, &binexp, mant1en256, exp1en256);
         if (fractional_digits & 128) mulf64(&mantissa, &binexp, mant1en128, exp1en128);
         if (fractional_digits &  64) mulf64(&mantissa, &binexp, mant1en64 , exp1en64 );
@@ -461,7 +462,8 @@ return_possibly_signed_zero:
         if (fractional_digits &   1) mulf64(&mantissa, &binexp, mant1en1  , exp1en1  );
     }
     else if (decimal_exponent) {
-        // XXX @Incomplete bound decimal_exponent --> overflow
+        if (decimal_exponent >= 512)
+            goto return_possibly_signed_infinity; // overflow
         if (decimal_exponent & 256) mulf64(&mantissa, &binexp, mant1e256, exp1e256);
         if (decimal_exponent & 128) mulf64(&mantissa, &binexp, mant1e128, exp1e128);
         if (decimal_exponent &  64) mulf64(&mantissa, &binexp, mant1e64 , exp1e64 );
