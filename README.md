@@ -8,7 +8,7 @@ Some properties of the code:
 * The parser proper is roughly 400 lines of which some could still be eliminated.
 
 * It does not do perfect unlimited-precision parsing.
-  Instead the parser tries to use the maximum amount of significant digits that fit
+  Instead the parser uses the maximum amount of significant mantissa digits that fit
   in a 64-bit integer and then it ignores the remaining digits.
 
 * The code has no dependencies except for the availability of a
