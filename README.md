@@ -41,7 +41,6 @@ The code is certainly not polished and there are points I'd gladly discuss if an
 
 EXAMPLE measurements with scientific notation and low precision (short strings to parse):
 
-
     our  cycles> mean =       188.2
     our  cycles>  std =       806.6 (428.7%); n = 16'777'216
     our  cycles>  min =        56
@@ -119,8 +118,7 @@ EXAMPLE measurements with scientific notation and low precision (short strings t
     Completed 16777216 tests, 0 failed.
     OK
 
-
-    EXAMPLE MEASUREMENTS without scientific notation and with very large precision (long strings) and bit-wise round-trip:
+EXAMPLE MEASUREMENTS without scientific notation and with very large precision (long strings) and bit-wise round-trip:
 
     our  cycles> mean =      2'171.3
     our  cycles>  std =     15'798.3 (727.6%); n = 16'777'216
