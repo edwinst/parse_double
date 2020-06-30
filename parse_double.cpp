@@ -31,6 +31,9 @@
 #include <intrin.h>
 #pragma intrinsic(_umul128)
 #pragma intrinsic(__rdtsc)
+#ifdef USE_INTRINSIC_BITSCANREVERSE64
+#pragma intrinsic(_BitScanReverse64)
+#endif
 
 #include <cstdarg>   // for error reporting code
 
@@ -435,7 +438,16 @@ return_possibly_signed_zero:
 
     // normalize the mantissa such that: old_mantissa == 2^binexp + new_mantissa * 2^(binexp-64).
     // that is binexp = 63 - (number of leading zeroes in old_mantissa)
-    // XXX @Speed consider intrinsic for counting leading zeroes
+#ifdef USE_INTRINSIC_BITSCANREVERSE64
+    unsigned long index;
+    unsigned char bsr_result = _BitScanReverse64(&index, mantissa);
+    assert(bsr_result);
+    int binexp = index;
+    if (index)
+        mantissa <<= (64 - index);
+    else
+        mantissa = 0; // instead of <<= 64.
+#else
     int binexp = 63;
     if (!(mantissa & 0xffffffff00000000)) { mantissa <<= 32; binexp -= 32; }
     if (!(mantissa & 0xffff000000000000)) { mantissa <<= 16; binexp -= 16; }
@@ -444,6 +456,7 @@ return_possibly_signed_zero:
     if (!(mantissa & 0xc000000000000000)) { mantissa <<=  2; binexp -=  2; }
     if (!(mantissa & 0x8000000000000000)) { mantissa <<=  1; binexp -=  1; }
     mantissa <<= 1; // Note: this shifts out the leading '1'-bit
+#endif
 
     // printf("normalized: 0x%016" PRIx64 ", binexp: %d\n", mantissa, binexp); // XXX DEBUG
 

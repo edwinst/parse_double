@@ -17,7 +17,9 @@ rem     /INCREMENTAL:NO ... do not link incrementally
 rem     /SUBSYSTEM:CONSOLE ... mark this as a Windows console application
 
 set CXX_FLAGS=/nologo /W3 /EHa-s-c- /MT
+set LINK_FLAGS_RELEASE=/DEBUG:NONE /INCREMENTAL:NO /SUBSYSTEM:CONSOLE 
 
 cl %CXX_FLAGS% /Zi parse_double.cpp histogram.cpp /link /DEBUG:FULL /INCREMENTAL:NO /SUBSYSTEM:CONSOLE /OUT:parse_double_debug.exe
 
-cl %CXX_FLAGS% /DNDEBUG /O2 parse_double.cpp histogram.cpp /link /DEBUG:NONE /INCREMENTAL:NO /SUBSYSTEM:CONSOLE /OUT:parse_double.exe
+cl %CXX_FLAGS% /DNDEBUG /O2 parse_double.cpp histogram.cpp /link %LINK_FLAGS_RELEASE% /OUT:parse_double.exe
+cl %CXX_FLAGS% /DNDEBUG /O2 /DUSE_INTRINSIC_BITSCANREVERSE64 parse_double.cpp histogram.cpp /link %LINK_FLAGS_RELEASE% /OUT:parse_double_bsr.exe
