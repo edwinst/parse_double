@@ -1,27 +1,39 @@
-Some properties of my code:
+# Double-precision floating-point parser
+
+This is a parser converting a decimal string representation of a number to
+IEEE 754 double-precision floating-point.
+
+Some properties of the code:
 
 * The parser proper is roughly 400 lines of which some could still be eliminated.
-* It does not do the perfect unlimited-precision parsing that Sean mentioned.
+
+* It does not do perfect unlimited-precision parsing.
   Instead the parser tries to use the maximum amount of significant digits that fit
   in a 64-bit integer.
-* no dependencies except for the availability of a (64-bit)*(64-bit)->(128-bit) unsigned integer multiplication
-  (in particular no floating-point functions are required)
-* faster than Visual C++ 2019 "atof" by a factor of 3-10x according to my crude measurements
+
+* The code has no dependencies except for the availability of a (64-bit)*(64-bit)->(128-bit) unsigned integer multiplication
+  (in particular no floating-point functions are required).
+
+* Faster than Visual C++ 2019 "atof" by a factor of 3-10x according to my crude measurements
   (also the standard deviation of the cycle times is much less than for Visual C++ atof).
-* round-trip safe in the sense that binary->string->binary (using Visual C++ sprintf for the first step) is the identity if the sprintf precision is large enough(#); even for subnormal numbers
-* round-trip safe in the sense that string->binary->string (using Visual C++ sprintf for the second step) is the identity in all cases I testedso far
+
+* Round-trip safe in the sense that binary->string->binary (using Visual C++ sprintf for the first step) is the identity if the sprintf precision is large enough; even for subnormal numbers.
+
+* Round-trip safe in the sense that string->binary->string (using Visual C++ sprintf for the second step) is the identity in all cases I tested so far.
+
 * The parser is written to run off a datastream with only single-byte-lookahead which makes
   it a bit more awkward than it would need to be for in-memory parsing. That would be easy to change.
 
-Maybe you want to take a look. The .cpp file contains round-trip testing in simple performance measurements.
-You can ignore histogram.*, which are only used to visualize the performance measurements. I included them
-in case you want to reproduce my results.
+The .cpp file contains round-trip testing and simple performance measurements.
 
-I put the code in the public domain. Since I currently have no employer, there should be zero legal risks attached.
+histogram.* is only used to visualize the performance measurements. I included them
+in case anyone wants to reproduce my results.
 
-The code is certainly not polished and there are points I'd gladly discuss if you are interested in using it.
+I put the code in the public domain.
 
+The code is certainly not polished and there are points I'd gladly discuss if anyone is interested in using it.
 
+## Measurements
 
 EXAMPLE measurements with scientific notation and low precision (short strings to parse):
 
