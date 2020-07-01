@@ -638,6 +638,24 @@ void report_rounding_errors(char *input_string, char *result_string, char *temp_
     printf("\n");
 }
 
+void run_rounding_demo(char *running_buffer, const char *demo_start_string, char *result_string, char *temp_string, char *our_max_error, char *atof_max_error, int32_t bufsize)
+{
+    printf("\n");
+    report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, bufsize);
+    increment_by_one_least_significant_digit(running_buffer);
+    report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, bufsize);
+    increment_by_one_least_significant_digit(running_buffer);
+    report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, bufsize);
+    printf("...\n");
+
+    #pragma warning ( suppress: 4996 )
+    strncpy(running_buffer, demo_start_string, bufsize);
+    for (uint32_t i = 0; i < 4; ++i) {
+        report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, bufsize);
+        increment_by_one_least_significant_digit(running_buffer);
+    }
+}
+
 int main(int argc, char **argv)
 {
     // override automatic binwidth detection (it does not work well because we have only fast cases first)
@@ -670,20 +688,23 @@ int main(int argc, char **argv)
             show_parse_result("number_b          ", buffer_b);
             show_parse_result("halfpoint         ", running_buffer);
 
+            run_rounding_demo(running_buffer, demo_start_string, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
+
+            // example with the smallest mantissa for which only 19 digits are used
+            static constexpr char number_a2_string[] =     "1.84467440737095533798139967984752729535102844238281250";
+            static constexpr char number_b2_string[] =     "1.84467440737095556002600460487883538007736206054687500";
+            static constexpr char halfpoint2_string[] =    "1.84467440737095544900370214236318133771419525146484375";
+            static constexpr char below_half2_string[] =   "1.84467440737095544900370214236318133771419525146484374";
+            static constexpr char demo_start2_string[] =   "1.84467440737095544999999999999999999999999999999999999";
+
             printf("\n");
-            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
-            increment_by_one_least_significant_digit(running_buffer);
-            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
-            increment_by_one_least_significant_digit(running_buffer);
-            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
-            printf("...\n");
+            show_parse_result("number_a2         ", number_a2_string);
+            show_parse_result("number_b2         ", number_b2_string);
+            show_parse_result("halfpoint2        ", halfpoint2_string);
 
             #pragma warning ( suppress: 4996 )
-            strncpy(running_buffer, demo_start_string, sizeof(running_buffer));
-            for (uint32_t i = 0; i < 4; ++i) {
-                report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
-                increment_by_one_least_significant_digit(running_buffer);
-            }
+            strncpy(running_buffer, below_half2_string, sizeof(running_buffer));
+            run_rounding_demo(running_buffer, demo_start2_string, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
 
             printf("\n");
             printf("largest seen absolute rounding errors:\n");
