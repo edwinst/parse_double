@@ -7,9 +7,11 @@ Some properties of the code:
 
 * The parser proper is roughly 400 lines of which some could still be eliminated.
 
-* It does not do perfect unlimited-precision parsing.
-  Instead the parser uses the maximum amount of significant mantissa digits that fit
-  in a 64-bit integer and then it ignores the remaining digits.
+* It does not do perfect unlimited-precision parsing. Instead the parser uses the
+  maximum amount of significant mantissa digits that fit in a 64-bit integer and
+  then it ignores the remaining digits. This leads to a worst-case rounding error
+  that is slightly larger than that of implementations considering all digits.
+  (See "Rounding" below.)
 
 * The code has no dependencies except for the availability of a
   (64-bit)*(64-bit)->(128-bit) unsigned integer multiplication
@@ -17,8 +19,10 @@ Some properties of the code:
   Note: Actually only the high 64 bits of the result are used. Therefore a
   64x64->64 "mulhi" operation as it is available on some cores can also be used.
 
-* Faster than Visual C++ 2019 "atof" by a factor of 2.6-5x according to my crude measurements
+* Faster than Visual C++ 2019 `atof` by a factor of 2.6-5x according to my crude measurements
   (also the standard deviation of the cycle times is much less than for Visual C++ atof).
+  (Note: This is not a "fair" comparison in the sense that `atof` has slightly lower
+   worst-case rounding error than this implementation; see "Rounding")
 
 * Round-trip-safe in the sense that binary->string->binary (using Visual C++
   sprintf for the first step) is the identity if the sprintf precision is large
@@ -38,6 +42,49 @@ in case anyone wants to reproduce my results.
 I put the code in the public domain (see "Unlicense" text in the files).
 
 The code is certainly not polished and there are points I'd gladly discuss if anyone is interested in using it.
+
+## Rounding
+
+Because this parser considers only up to 20 decimal digits in the mantissa part,
+it does not achieve the theoretically optimal rounding error in all cases.
+More specifically, there is a range of numbers starting (exclusively) at each midway
+point between any two adjacent exactly representable double-precision numbers and extending
+towards larger absolute values in which this parser rounds towards zero while the
+nearest representable number actually lies towards -/+ infinity of the exact result.
+
+The included test program demonstrates such a case when invoked with the command line argument `--rounding-demo`.
+It produces the following output at the time of this writing:
+
+    number_a = 1.0000000000000000000000000000000000000000000000000000
+    number_b = 1.0000000000000002220446049250313080847263336181640625
+    number_a          : result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000000)
+    number_b          : result = 1 (0x3ff0000000000001) atof_result = 1 (0x3ff0000000000001)
+    halfpoint         : result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000000)
+    
+    1.00000000000000011102230246251565404236316680908203125: result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000000)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203125
+    atof rounding error: -0.00000000000000011102230246251565404236316680908203125
+    1.00000000000000011102230246251565404236316680908203126: result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203126
+    atof rounding error: +0.00000000000000011102230246251565404236316680908203124
+    1.00000000000000011102230246251565404236316680908203127: result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203127
+    atof rounding error: +0.00000000000000011102230246251565404236316680908203123
+    ...
+    1.00000000000000011109999999999999999999999999999999998: result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: -0.00000000000000011109999999999999999999999999999999998
+    atof rounding error: +0.00000000000000011094460492503130808472633361816406252
+    1.00000000000000011109999999999999999999999999999999999: result = 1 (0x3ff0000000000000) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: -0.00000000000000011109999999999999999999999999999999999
+    atof rounding error: +0.00000000000000011094460492503130808472633361816406251
+    1.00000000000000011110000000000000000000000000000000000: result = 1 (0x3ff0000000000001) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: +0.00000000000000011094460492503130808472633361816406250
+    atof rounding error: +0.00000000000000011094460492503130808472633361816406250
+    
+    largest seen absolute rounding errors:
+        atof result: 0.00000000000000011102230246251565404236316680908203125
+         our result: 0.00000000000000011109999999999999999999999999999999999 (0.0700% larger)
+
 
 ## Measurements
 
