@@ -530,6 +530,114 @@ uint64_t xorshift64(uint64_t *state)
 HISTOGRAM_DEFINE_DEFAULTS_AND_INIT(cycles, 0);
 HISTOGRAM_DEFINE_DEFAULTS_AND_INIT(atof_cycles, 0);
 
+double show_parse_result(char *name, char *buffer)
+{
+    Status status;
+    status.failed = false;
+    status.error_message[0] = 0;
+    DataStream stream;
+    stream.ptr = (uint8_t*)buffer;
+    stream.end = stream.ptr + strlen(buffer);
+
+    double result = parse_double(&status, &stream);
+    double atof_result = atof(buffer);
+    if (status.failed) {
+        printf("ERROR: parsing failed: %s\n", status.error_message);
+        return std::nan("");
+    }
+    else {
+        printf("%s: result = %g (0x%016" PRIx64 ") atof_result = %g (0x%016" PRIx64 ")\n",
+                name,
+                result, *reinterpret_cast<uint64_t*>(&result),
+                atof_result, *reinterpret_cast<uint64_t*>(&atof_result));
+        return result;
+    }
+}
+
+void increment_by_one_least_significant_digit(char *buffer)
+{
+    assert(buffer && buffer[0]);
+    int32_t digit_index = (int32_t)strlen(buffer) - 1;
+    char digit;
+    do {
+        digit = buffer[digit_index];
+        if (digit != '.') {
+            digit++;
+            if (digit > '9')
+                digit = '0';
+            buffer[digit_index] = digit;
+        }
+        else
+            digit = '0'; // continue beyond the decimal point
+        digit_index--;
+    } while (digit == '0' && digit_index >= 0);
+}
+
+void subtract_aligned_decimals(char *accu, char *to_subtract)
+{
+    assert(strlen(accu) == strlen(to_subtract));
+    int8_t carry = 0;
+    for (int32_t digit_index = (int32_t)strlen(accu) - 1; digit_index >= 0; --digit_index) {
+        int8_t accu_digit = accu[digit_index];
+        if (accu_digit == '.')
+            continue;
+        int8_t to_subtract_digit = to_subtract[digit_index];
+        accu_digit -= to_subtract_digit;
+        accu_digit -= carry;
+        if (accu_digit < 0) {
+            assert(accu_digit >= -10);
+            accu_digit += 10;
+            carry = 1;
+        }
+        else
+            carry = 0;
+        accu[digit_index] = '0' + accu_digit;
+    }
+}
+
+void max_aligned_decimals(char *accu, char *input, uint32_t bufsize)
+{
+    assert(strlen(accu) == bufsize - 1);
+    assert(strlen(accu) == strlen(input));
+    if (strcmp(accu, input) < 0)
+        memcpy(accu, input, bufsize);
+}
+
+void compare_aligned_decimals(char *rounded, char *exact, char *temp_string, char *max_error_accu, uint32_t bufsize)
+{
+    assert(rounded[0] == '1');
+    assert(exact[0] == '1');
+
+    // printf("rounded        =  %s\n", rounded); // XXX DEBUG
+    // printf("exact          =  %s\n", exact); // XXX DEBUG
+    if (strcmp(rounded, exact) < 0) {
+        memcpy(temp_string, exact, bufsize);
+        subtract_aligned_decimals(temp_string, rounded);
+        printf("-%s", temp_string);
+    }
+    else {
+        memcpy(temp_string, rounded, bufsize);
+        subtract_aligned_decimals(temp_string, exact);
+        printf("+%s", temp_string);
+    }
+    max_aligned_decimals(max_error_accu, temp_string, bufsize);
+}
+
+void report_rounding_errors(char *input_string, char *result_string, char *temp_string, char *our_max_error, char *atof_max_error, int32_t bufsize)
+{
+    double result = show_parse_result(input_string, input_string);
+    int nchars = snprintf(result_string, bufsize, "%.53f", result);
+    assert(nchars == 55);
+    printf(" our rounding error: ");
+    compare_aligned_decimals(result_string, input_string, temp_string, our_max_error, bufsize);
+    double atof_result = atof(input_string);
+    nchars = snprintf(result_string, bufsize, "%.53f", atof_result);
+    assert(nchars == 55);
+    printf("\natof rounding error: ");
+    compare_aligned_decimals(result_string, input_string, temp_string, atof_max_error, bufsize);
+    printf("\n");
+}
+
 int main(int argc, char **argv)
 {
     // override automatic binwidth detection (it does not work well because we have only fast cases first)
@@ -537,22 +645,71 @@ int main(int argc, char **argv)
     hist_atof_cycles.binwidth = 100;
 
     if (argc >= 2) {
-        Status status;
-        status.failed = false;
-        status.error_message[0] = 0;
+        if (strcmp(argv[1], "--rounding-demo") == 0) {
+            uint64_t number_a_bits = 0x3ff0000000000000; // 1.0000000000000000000000000000000000000000000000000000
+            uint64_t number_b_bits = 0x3ff0000000000001; // 1.0000000000000002220446049250313080847263336181640625
+            char running_buffer[] =                        "1.00000000000000011102230246251565404236316680908203125"; // halfpoint
+            char demo_start_string[] =                     "1.00000000000000011109999999999999999999999999999999998";
+            char our_max_error[] =                         "0.00000000000000000000000000000000000000000000000000000";
+            char atof_max_error[] =                        "0.00000000000000000000000000000000000000000000000000000";
+            char temp_string[sizeof(running_buffer)];
+            char result_string[sizeof(running_buffer)];
+            double number_a = *reinterpret_cast<double*>(&number_a_bits);
+            double number_b = *reinterpret_cast<double*>(&number_b_bits);
 
-        DataStream stream;
-        stream.ptr = (uint8_t*)argv[1];
-        stream.end = stream.ptr + strlen(argv[1]);
+            char buffer_a[100];
+            char buffer_b[100];
+            int nchars = snprintf(buffer_a, sizeof(buffer_a), "%.52f", number_a);
+            assert(nchars >= 0 && nchars < sizeof(buffer_a));
+            nchars = snprintf(buffer_b, sizeof(buffer_b), "%.52f", number_b);
+            assert(nchars >= 0 && nchars < sizeof(buffer_b));
+            printf("number_a = %s\n", buffer_a);
+            printf("number_b = %s\n", buffer_b);
 
-        double result = parse_double(&status, &stream);
-        double atof_result = atof(argv[1]);
-        if (status.failed)
-            printf("ERROR: parsing failed: %s\n", status.error_message);
-        else
-            printf("OK; result = %g (0x%016" PRIx64 ") atof_result = %g (0x%016" PRIx64 ")\n",
-                    result, *reinterpret_cast<uint64_t*>(&result),
-                    atof_result, *reinterpret_cast<uint64_t*>(&atof_result));
+            show_parse_result("number_a          ", buffer_a);
+            show_parse_result("number_b          ", buffer_b);
+            show_parse_result("halfpoint         ", running_buffer);
+
+            printf("\n");
+            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
+            increment_by_one_least_significant_digit(running_buffer);
+            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
+            increment_by_one_least_significant_digit(running_buffer);
+            report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
+            printf("...\n");
+
+            #pragma warning ( suppress: 4996 )
+            strncpy(running_buffer, demo_start_string, sizeof(running_buffer));
+            for (uint32_t i = 0; i < 4; ++i) {
+                report_rounding_errors(running_buffer, result_string, temp_string, our_max_error, atof_max_error, sizeof(temp_string));
+                increment_by_one_least_significant_digit(running_buffer);
+            }
+
+            printf("\n");
+            printf("largest seen absolute rounding errors:\n");
+            double our_max_error_double = atof(our_max_error);
+            double atof_max_error_double = atof(atof_max_error);
+            printf("    atof result: %s\n", atof_max_error);
+            printf("     our result: %s (%.4f%% larger)\n", our_max_error, 100.0 * ((our_max_error_double / atof_max_error_double) - 1.0));
+        }
+        else {
+            Status status;
+            status.failed = false;
+            status.error_message[0] = 0;
+
+            DataStream stream;
+            stream.ptr = (uint8_t*)argv[1];
+            stream.end = stream.ptr + strlen(argv[1]);
+
+            double result = parse_double(&status, &stream);
+            double atof_result = atof(argv[1]);
+            if (status.failed)
+                printf("ERROR: parsing failed: %s\n", status.error_message);
+            else
+                printf("OK; result = %g (0x%016" PRIx64 ") atof_result = %g (0x%016" PRIx64 ")\n",
+                        result, *reinterpret_cast<uint64_t*>(&result),
+                        atof_result, *reinterpret_cast<uint64_t*>(&atof_result));
+        }
     }
     else {
         // round-trip test
