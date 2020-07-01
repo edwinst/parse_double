@@ -530,7 +530,7 @@ uint64_t xorshift64(uint64_t *state)
 HISTOGRAM_DEFINE_DEFAULTS_AND_INIT(cycles, 0);
 HISTOGRAM_DEFINE_DEFAULTS_AND_INIT(atof_cycles, 0);
 
-double show_parse_result(char *name, char *buffer)
+double show_parse_result(char *name, const char *buffer)
 {
     Status status;
     status.failed = false;
@@ -649,7 +649,7 @@ int main(int argc, char **argv)
             uint64_t number_a_bits = 0x3ff0000000000000; // 1.0000000000000000000000000000000000000000000000000000
             uint64_t number_b_bits = 0x3ff0000000000001; // 1.0000000000000002220446049250313080847263336181640625
             char running_buffer[] =                        "1.00000000000000011102230246251565404236316680908203125"; // halfpoint
-            char demo_start_string[] =                     "1.00000000000000011109999999999999999999999999999999998";
+            static constexpr char demo_start_string[] =    "1.00000000000000011109999999999999999999999999999999998";
             char our_max_error[] =                         "0.00000000000000000000000000000000000000000000000000000";
             char atof_max_error[] =                        "0.00000000000000000000000000000000000000000000000000000";
             char temp_string[sizeof(running_buffer)];
