@@ -47,12 +47,12 @@ The code is certainly not polished and there are points I'd gladly discuss if an
 
 Because this parser considers only up to 20 decimal digits in the mantissa part,
 it does not achieve the theoretically optimal rounding error in all cases.
-More specifically, there is a range of numbers starting (exclusively) at each midway
+More specifically, there is a range of numbers starting at (or just after) each midway
 point between any two adjacent exactly representable double-precision numbers and extending
 towards larger absolute values in which this parser rounds towards zero while the
 nearest representable number actually lies towards -/+ infinity of the exact result.
 
-The included test program demonstrates such a case when invoked with the command line argument `--rounding-demo`.
+The included test program demonstrates such cases when invoked with the command line argument `--rounding-demo`.
 It produces the following output at the time of this writing:
 
     number_a = 1.0000000000000000000000000000000000000000000000000000
@@ -80,11 +80,40 @@ It produces the following output at the time of this writing:
     1.00000000000000011110000000000000000000000000000000000: result = 1 (0x3ff0000000000001) atof_result = 1 (0x3ff0000000000001)
      our rounding error: +0.00000000000000011094460492503130808472633361816406250
     atof rounding error: +0.00000000000000011094460492503130808472633361816406250
+    1.00000000000000011110000000000000000000000000000000001: result = 1 (0x3ff0000000000001) atof_result = 1 (0x3ff0000000000001)
+     our rounding error: +0.00000000000000011094460492503130808472633361816406249
+    atof rounding error: +0.00000000000000011094460492503130808472633361816406249
+    
+    number_a2         : result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ad)
+    number_b2         : result = 1.84467 (0x3ffd83c94fb6d2ae) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+    halfpoint2        : result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+    
+    1.84467440737095544900370214236318133771419525146484374: result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ad)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203124
+    atof rounding error: -0.00000000000000011102230246251565404236316680908203124
+    1.84467440737095544900370214236318133771419525146484375: result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203125
+    atof rounding error: +0.00000000000000011102230246251565404236316680908203125
+    1.84467440737095544900370214236318133771419525146484376: result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: -0.00000000000000011102230246251565404236316680908203126
+    atof rounding error: +0.00000000000000011102230246251565404236316680908203124
+    ...
+    1.84467440737095544999999999999999999999999999999999999: result = 1.84467 (0x3ffd83c94fb6d2ad) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: -0.00000000000000011201860032015247270464897155761718749
+    atof rounding error: +0.00000000000000011002600460487883538007736206054687501
+    1.84467440737095545000000000000000000000000000000000000: result = 1.84467 (0x3ffd83c94fb6d2ae) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: +0.00000000000000011002600460487883538007736206054687500
+    atof rounding error: +0.00000000000000011002600460487883538007736206054687500
+    1.84467440737095545000000000000000000000000000000000001: result = 1.84467 (0x3ffd83c94fb6d2ae) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: +0.00000000000000011002600460487883538007736206054687499
+    atof rounding error: +0.00000000000000011002600460487883538007736206054687499
+    1.84467440737095545000000000000000000000000000000000002: result = 1.84467 (0x3ffd83c94fb6d2ae) atof_result = 1.84467 (0x3ffd83c94fb6d2ae)
+     our rounding error: +0.00000000000000011002600460487883538007736206054687498
+    atof rounding error: +0.00000000000000011002600460487883538007736206054687498
     
     largest seen absolute rounding errors:
         atof result: 0.00000000000000011102230246251565404236316680908203125
-         our result: 0.00000000000000011109999999999999999999999999999999999 (0.0700% larger)
-
+         our result: 0.00000000000000011201860032015247270464897155761718749 (0.8974% larger)
 
 ## Measurements
 
