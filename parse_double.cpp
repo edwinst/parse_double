@@ -546,10 +546,13 @@ int main(int argc, char **argv)
         stream.end = stream.ptr + strlen(argv[1]);
 
         double result = parse_double(&status, &stream);
+        double atof_result = atof(argv[1]);
         if (status.failed)
             printf("ERROR: parsing failed: %s\n", status.error_message);
         else
-            printf("OK; result = %g (0x%016" PRIx64 ")\n", result, *reinterpret_cast<uint64_t*>(&result));
+            printf("OK; result = %g (0x%016" PRIx64 ") atof_result = %g (0x%016" PRIx64 ")\n",
+                    result, *reinterpret_cast<uint64_t*>(&result),
+                    atof_result, *reinterpret_cast<uint64_t*>(&atof_result));
     }
     else {
         // round-trip test
