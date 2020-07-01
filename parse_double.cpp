@@ -406,8 +406,8 @@ return_possibly_signed_zero:
         return 0.0;
     }
 
-    // printf("mantissa: %" PRIu64 " (0x%016" PRIx64 "), digits: %d significant_digits: %d decimal_exponent: %d fractional_digits: %d\n",
-    //        mantissa, mantissa, digits, significant_digits, decimal_exponent, fractional_digits); // XXX DEBUG
+    // printf("mantissa: %" PRIu64 " (0x%016" PRIx64 "), digits: %d significant_digits: %d decimal_exponent: %" PRId64 "\n",
+    //        mantissa, mantissa, digits, significant_digits, decimal_exponent); // XXX DEBUG
 
     // normalize the mantissa such that: old_mantissa == 2^binexp + new_mantissa * 2^(binexp-64).
     // that is binexp = 63 - (number of leading zeroes in old_mantissa)
