@@ -25,7 +25,7 @@ Some properties of the code:
   enough; even for subnormal numbers.
 
 * Round-trip-safe in the sense that string->binary->string (using Visual C++
-  sprintf for the second step) is the identity in all cases I tested so far.
+  sprintf to generate the string and for the final step) is the identity in all cases I tested so far.
 
 * The parser is written to run off a datastream with only single-byte-lookahead which makes
   it a bit more awkward than it would need to be for in-memory parsing. That would be easy to change.
